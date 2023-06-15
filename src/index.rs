@@ -10,6 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use digest::Digest;
 use either::{Left, Right};
 use futures::stream::StreamExt;
+use rand::{seq::IteratorRandom, Rng};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::Sha1;
@@ -222,7 +223,7 @@ pub fn delete(cache: &Path, key: &str) -> Result<()> {
 /// Asynchronously deletes an index entry, without deleting the actual cache
 /// data entry.
 pub async fn delete_async(cache: &Path, key: &str) -> Result<()> {
-    insert(
+    insert_async(
         cache,
         key,
         WriteOpts {
@@ -234,6 +235,7 @@ pub async fn delete_async(cache: &Path, key: &str) -> Result<()> {
             raw_metadata: None,
         },
     )
+    .await
     .map(|_| ())
 }
 
@@ -289,6 +291,63 @@ pub fn ls(cache: &Path) -> impl Iterator<Item = Result<Metadata>> {
             Ok(it) => Left(it.into_iter().map(Ok)),
             Err(err) => Right(std::iter::once(Err(err))),
         })
+}
+
+/// Random raw index Metadata entries.
+pub fn random(cache: &Path) -> Result<Option<Metadata>> {
+    let bucket = random_bucket_path(cache);
+    let mut rng = rand::thread_rng();
+    Ok(bucket_entries(&bucket)
+        .with_context(|| format!("Failed to read index bucket entries from {bucket:?}"))?
+        .into_iter()
+        .choose(&mut rng)
+        .and_then(|entry| {
+            if let Some(integrity) = entry.integrity {
+                let integrity: Integrity = match integrity.parse() {
+                    Ok(sri) => sri,
+                    _ => return None,
+                };
+                Some(Metadata {
+                    key: entry.key,
+                    integrity,
+                    size: entry.size,
+                    time: entry.time,
+                    metadata: entry.metadata,
+                    raw_metadata: entry.raw_metadata,
+                })
+            } else {
+                None
+            }
+        }))
+}
+
+/// Random raw index Metadata entries.
+pub async fn random_async(cache: &Path) -> Result<Option<Metadata>> {
+    let bucket = random_bucket_path(cache);
+    let mut rng = rand::thread_rng();
+    Ok(bucket_entries_async(&bucket)
+        .await
+        .with_context(|| format!("Failed to read index bucket entries from {bucket:?}"))?
+        .into_iter()
+        .choose(&mut rng)
+        .and_then(|entry| {
+            if let Some(integrity) = entry.integrity {
+                let integrity: Integrity = match integrity.parse() {
+                    Ok(sri) => sri,
+                    _ => return None,
+                };
+                Some(Metadata {
+                    key: entry.key,
+                    integrity,
+                    size: entry.size,
+                    time: entry.time,
+                    metadata: entry.metadata,
+                    raw_metadata: entry.raw_metadata,
+                })
+            } else {
+                None
+            }
+        }))
 }
 
 fn bucket_path(cache: &Path, key: &str) -> PathBuf {
@@ -371,6 +430,16 @@ async fn bucket_entries_async(bucket: &Path) -> std::io::Result<Vec<Serializable
         }
     }
     Ok(vec)
+}
+
+fn random_bucket_path(cache: &Path) -> PathBuf {
+    let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
+    let hashed = format!("{:x?}", random_bytes);
+    cache
+        .join(format!("index-v{INDEX_VERSION}"))
+        .join(&hashed[0..2])
+        .join(&hashed[2..4])
+        .join(&hashed[4..])
 }
 
 #[cfg(test)]
