@@ -327,7 +327,7 @@ pub fn random(cache: &Path) -> Result<Option<Metadata>> {
 pub async fn random_async(cache: &Path) -> Result<Option<Metadata>> {
     let bucket = random_bucket_path(cache);
 
-    println!("[random_async] bucket: {:?}", bucket);
+    // println!("[random_async] bucket: {:?}", bucket);
     if bucket.is_none() {
         return Ok(None);
     }
@@ -445,7 +445,7 @@ fn random_bucket_path(cache: &Path) -> Option<PathBuf> {
         .join(format!("index-v{INDEX_VERSION}"))
         .join(&hashed[0..2]);
     // .join(&hashed[2..4])
-    println!("[random_bucket_path] cache_path: {:?}", cache_path);
+    // println!("[random_bucket_path] cache_path: {:?}", cache_path);
     let mut rng = rand::thread_rng();
     WalkDir::new(&cache_path)
         .into_iter()
