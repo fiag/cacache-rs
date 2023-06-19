@@ -11,6 +11,7 @@ use digest::Digest;
 use either::{Left, Right};
 use futures::stream::StreamExt;
 use rand::{seq::IteratorRandom, Rng};
+use rand::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::Sha1;
@@ -333,7 +334,7 @@ pub async fn random_async(cache: &Path) -> Result<Option<Metadata>> {
     }
 
     let bucket = bucket.unwrap();
-    let mut rng = rand::thread_rng();
+    let mut rng: StdRng = SeedableRng::from_entropy();
     Ok(bucket_entries_async(&bucket)
         .await
         .with_context(|| format!("Failed to read index bucket entries from {bucket:?}"))?
