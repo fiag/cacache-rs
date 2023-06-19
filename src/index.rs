@@ -325,8 +325,9 @@ pub fn random(cache: &Path) -> Result<Option<Metadata>> {
 
 /// Random raw index Metadata entries.
 pub async fn random_async(cache: &Path) -> Result<Option<Metadata>> {
-    let bucket = (cache);
-    println!("[random_async] bucket: {:?}", cache_path);
+    let bucket = random_bucket_path(cache);
+
+    println!("[random_async] bucket: {:?}", bucket);
     if bucket.is_none() {
         return Ok(None);
     }
