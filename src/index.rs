@@ -325,7 +325,8 @@ pub fn random(cache: &Path) -> Result<Option<Metadata>> {
 
 /// Random raw index Metadata entries.
 pub async fn random_async(cache: &Path) -> Result<Option<Metadata>> {
-    let bucket = random_bucket_path(cache);
+    let bucket = (cache);
+    println!("[random_async] bucket: {:?}", cache_path);
     if bucket.is_none() {
         return Ok(None);
     }
@@ -435,13 +436,14 @@ async fn bucket_entries_async(bucket: &Path) -> std::io::Result<Vec<Serializable
     Ok(vec)
 }
 
-fn random_bucket_path(cache: &Path) -> Option<PathBuf> {
+fn random_bucket_path(cache: &Path) -> Optirandom_bucket_pathon<PathBuf> {
     let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
     let hashed = format!("{:x?}", random_bytes);
     let cache_path = cache
         .join(format!("index-v{INDEX_VERSION}"))
         .join(&hashed[0..2]);
         // .join(&hashed[2..4])
+    println!("[random_bucket_path] cache_path: {:?}", cache_path);
     let mut rng = rand::thread_rng();
     WalkDir::new(&cache_path)
         .into_iter()
