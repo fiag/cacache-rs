@@ -439,7 +439,8 @@ async fn bucket_entries_async(bucket: &Path) -> std::io::Result<Vec<Serializable
 
 fn random_bucket_path(cache: &Path) -> Option<PathBuf> {
     let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
-    let hashed = format!("{:x?}", random_bytes).trim_matches("[]");
+    let hashed = format!("{:x?}", random_bytes);
+    let hashed = hashed.trim_matches(|c| { c == '[' || c == ']'});
     let cache_path = cache
         .join(format!("index-v{INDEX_VERSION}"))
         .join(&hashed[0..2]);
