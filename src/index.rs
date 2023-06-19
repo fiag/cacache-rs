@@ -437,7 +437,7 @@ async fn bucket_entries_async(bucket: &Path) -> std::io::Result<Vec<Serializable
     Ok(vec)
 }
 
-fn random_bucket_path(cache: &Path) -> Optirandom_bucket_pathon<PathBuf> {
+fn random_bucket_path(cache: &Path) -> Option<PathBuf> {
     let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
     let hashed = format!("{:x?}", random_bytes);
     let cache_path = cache
