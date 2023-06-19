@@ -296,58 +296,61 @@ pub fn ls(cache: &Path) -> impl Iterator<Item = Result<Metadata>> {
 /// Random raw index Metadata entries.
 pub fn random(cache: &Path) -> Result<Option<Metadata>> {
     let bucket = random_bucket_path(cache);
+
+    if bucket.is_none() {
+        return Ok(None);
+    }
+
+    let bucket = bucket.unwrap();
     let mut rng = rand::thread_rng();
     Ok(bucket_entries(&bucket)
         .with_context(|| format!("Failed to read index bucket entries from {bucket:?}"))?
         .into_iter()
-        .choose(&mut rng)
-        .and_then(|entry| {
-            if let Some(integrity) = entry.integrity {
-                let integrity: Integrity = match integrity.parse() {
-                    Ok(sri) => sri,
-                    _ => return None,
-                };
+        .filter_map(|se| {
+            if let Some(i) = se.integrity {
                 Some(Metadata {
-                    key: entry.key,
-                    integrity,
-                    size: entry.size,
-                    time: entry.time,
-                    metadata: entry.metadata,
-                    raw_metadata: entry.raw_metadata,
+                    key: se.key,
+                    integrity: i.parse().unwrap(),
+                    time: se.time,
+                    size: se.size,
+                    metadata: se.metadata,
+                    raw_metadata: se.raw_metadata,
                 })
             } else {
                 None
             }
-        }))
+        })
+        .choose(&mut rng))
 }
 
 /// Random raw index Metadata entries.
 pub async fn random_async(cache: &Path) -> Result<Option<Metadata>> {
     let bucket = random_bucket_path(cache);
+    if bucket.is_none() {
+        return Ok(None);
+    }
+
+    let bucket = bucket.unwrap();
     let mut rng = rand::thread_rng();
     Ok(bucket_entries_async(&bucket)
         .await
         .with_context(|| format!("Failed to read index bucket entries from {bucket:?}"))?
         .into_iter()
-        .choose(&mut rng)
-        .and_then(|entry| {
-            if let Some(integrity) = entry.integrity {
-                let integrity: Integrity = match integrity.parse() {
-                    Ok(sri) => sri,
-                    _ => return None,
-                };
+        .filter_map(|se| {
+            if let Some(i) = se.integrity {
                 Some(Metadata {
-                    key: entry.key,
-                    integrity,
-                    size: entry.size,
-                    time: entry.time,
-                    metadata: entry.metadata,
-                    raw_metadata: entry.raw_metadata,
+                    key: se.key,
+                    integrity: i.parse().unwrap(),
+                    time: se.time,
+                    size: se.size,
+                    metadata: se.metadata,
+                    raw_metadata: se.raw_metadata,
                 })
             } else {
                 None
             }
-        }))
+        })
+        .choose(&mut rng))
 }
 
 fn bucket_path(cache: &Path, key: &str) -> PathBuf {
@@ -384,7 +387,7 @@ fn bucket_entries(bucket: &Path) -> std::io::Result<Vec<SerializableMetadata>> {
         .map(|file| {
             BufReader::new(file)
                 .lines()
-                .filter_map(std::result::Result::ok)
+                .flatten()
                 .filter_map(|entry| {
                     let entry_str = match entry.split('\t').collect::<Vec<&str>>()[..] {
                         [hash, entry_str] if hash_entry(entry_str) == hash => entry_str,
@@ -432,14 +435,20 @@ async fn bucket_entries_async(bucket: &Path) -> std::io::Result<Vec<Serializable
     Ok(vec)
 }
 
-fn random_bucket_path(cache: &Path) -> PathBuf {
-    let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
+fn random_bucket_path(cache: &Path) -> Option<PathBuf> {
+    let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
     let hashed = format!("{:x?}", random_bytes);
-    cache
+    let cache_path = cache
         .join(format!("index-v{INDEX_VERSION}"))
-        .join(&hashed[0..2])
-        .join(&hashed[2..4])
-        .join(&hashed[4..])
+        .join(&hashed[0..2]);
+        // .join(&hashed[2..4])
+    let mut rng = rand::thread_rng();
+    WalkDir::new(&cache_path)
+        .into_iter()
+        .flatten()
+        .filter(|bucket | bucket.file_type().is_file())
+        .choose(&mut rng)
+        .map(|entry| entry.into_path())
 }
 
 #[cfg(test)]
