@@ -439,7 +439,6 @@ fn random_bucket_path(cache: &Path) -> PathBuf {
         .join(format!("index-v{INDEX_VERSION}"))
         .join(&hashed[0..2])
         .join(&hashed[2..4])
-        .join(&hashed[4..])
 }
 
 #[cfg(test)]
