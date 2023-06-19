@@ -164,8 +164,8 @@ mod get;
 mod linkto;
 mod ls;
 mod put;
-mod rm;
 mod random;
+mod rm;
 
 pub use errors::{Error, Result};
 pub use index::Metadata;

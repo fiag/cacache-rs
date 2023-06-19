@@ -440,17 +440,17 @@ async fn bucket_entries_async(bucket: &Path) -> std::io::Result<Vec<Serializable
 fn random_bucket_path(cache: &Path) -> Option<PathBuf> {
     let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
     let hashed = format!("{:x?}", random_bytes);
-    let hashed = hashed.trim_matches(|c| { c == '[' || c == ']'});
+    let hashed = hashed.replace(|c| c == '[' || c == ']' || c == ',' || c == ' ', "");
     let cache_path = cache
         .join(format!("index-v{INDEX_VERSION}"))
         .join(&hashed[0..2]);
-        // .join(&hashed[2..4])
+    // .join(&hashed[2..4])
     println!("[random_bucket_path] cache_path: {:?}", cache_path);
     let mut rng = rand::thread_rng();
     WalkDir::new(&cache_path)
         .into_iter()
         .flatten()
-        .filter(|bucket | bucket.file_type().is_file())
+        .filter(|bucket| bucket.file_type().is_file())
         .choose(&mut rng)
         .map(|entry| entry.into_path())
 }
