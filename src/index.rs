@@ -307,6 +307,9 @@ pub fn random(cache: &Path) -> Result<Option<Metadata>> {
     Ok(bucket_entries(&bucket)
         .with_context(|| format!("Failed to read index bucket entries from {bucket:?}"))?
         .into_iter()
+        .rev()
+        .collect::<HashSet<SerializableMetadata>>()
+        .into_iter()
         .filter_map(|se| {
             if let Some(i) = se.integrity {
                 Some(Metadata {
@@ -338,6 +341,9 @@ pub async fn random_async(cache: &Path) -> Result<Option<Metadata>> {
     Ok(bucket_entries_async(&bucket)
         .await
         .with_context(|| format!("Failed to read index bucket entries from {bucket:?}"))?
+        .into_iter()
+        .rev()
+        .collect::<HashSet<SerializableMetadata>>()
         .into_iter()
         .filter_map(|se| {
             if let Some(i) = se.integrity {
