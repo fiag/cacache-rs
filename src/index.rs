@@ -10,8 +10,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use digest::Digest;
 use either::{Left, Right};
 use futures::stream::StreamExt;
-use rand::{seq::IteratorRandom, Rng};
 use rand::prelude::*;
+use rand::{seq::IteratorRandom, Rng};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::Sha1;
@@ -22,6 +22,7 @@ use walkdir::WalkDir;
 use crate::async_lib::{AsyncBufReadExt, AsyncWriteExt};
 use crate::errors::{IoErrorExt, Result};
 use crate::put::WriteOpts;
+use crate::DeleteOpts;
 
 const INDEX_VERSION: &str = "5";
 
@@ -205,39 +206,53 @@ pub async fn find_async(cache: &Path, key: &str) -> Result<Option<Metadata>> {
 }
 
 /// Deletes an index entry, without deleting the actual cache data entry.
-pub fn delete(cache: &Path, key: &str) -> Result<()> {
-    insert(
-        cache,
-        key,
-        WriteOpts {
-            algorithm: None,
-            size: None,
-            sri: None,
-            time: None,
-            metadata: None,
-            raw_metadata: None,
-        },
-    )
-    .map(|_| ())
+pub fn delete(cache: &Path, key: &str, opts: DeleteOpts) -> Result<()> {
+    if !opts.remove_fully {
+        insert(
+            cache,
+            key,
+            WriteOpts {
+                algorithm: None,
+                size: None,
+                sri: None,
+                time: None,
+                metadata: None,
+                raw_metadata: None,
+            },
+        )
+        .map(|_| ())
+    } else {
+        let bucket = bucket_path(cache, key);
+        fs::remove_file(&bucket)
+            .with_context(|| format!("Failed to remove bucket at {}", bucket.display()))?;
+        Ok(())
+    }
 }
 
 /// Asynchronously deletes an index entry, without deleting the actual cache
 /// data entry.
-pub async fn delete_async(cache: &Path, key: &str) -> Result<()> {
-    insert_async(
-        cache,
-        key,
-        WriteOpts {
-            algorithm: None,
-            size: None,
-            sri: None,
-            time: None,
-            metadata: None,
-            raw_metadata: None,
-        },
-    )
-    .await
-    .map(|_| ())
+pub async fn delete_async(cache: &Path, key: &str, opts: DeleteOpts) -> Result<()> {
+    if !opts.remove_fully {
+        insert_async(
+            cache,
+            key,
+            WriteOpts {
+                algorithm: None,
+                size: None,
+                sri: None,
+                time: None,
+                metadata: None,
+                raw_metadata: None,
+            },
+        )
+        .await
+        .map(|_| ())
+    } else {
+        let bucket = bucket_path(cache, key);
+        crate::async_lib::remove_file(&bucket).await
+            .with_context(|| format!("Failed to remove bucket at {}", bucket.display()))?;
+        Ok(())
+    }
 }
 
 /// Lists raw index Metadata entries.

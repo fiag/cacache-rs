@@ -31,12 +31,12 @@ use crate::index;
 ///     Ok(())
 /// }
 /// ```
-pub async fn remove<P, K>(cache: P, key: K) -> Result<()>
+pub async fn remove<P, K>(cache: P, key: K, opts: DeleteOpts) -> Result<()>
 where
     P: AsRef<Path>,
     K: AsRef<str>,
 {
-    index::delete_async(cache.as_ref(), key.as_ref()).await
+    index::delete_async(cache.as_ref(), key.as_ref(), opts).await
 }
 
 /// Removes an individual content entry. Any index entries pointing to this
@@ -131,12 +131,12 @@ pub async fn clear<P: AsRef<Path>>(cache: P) -> Result<()> {
 ///     Ok(())
 /// }
 /// ```
-pub fn remove_sync<P, K>(cache: P, key: K) -> Result<()>
+pub fn remove_sync<P, K>(cache: P, key: K, opts: DeleteOpts) -> Result<()>
 where
     P: AsRef<Path>,
     K: AsRef<str>,
 {
-    index::delete(cache.as_ref(), key.as_ref())
+    index::delete(cache.as_ref(), key.as_ref(), opts)
 }
 
 /// Removes an individual content entry synchronously. Any index entries
@@ -203,6 +203,26 @@ pub fn clear_sync<P: AsRef<Path>>(cache: P) -> Result<()> {
         Ok(())
     }
     inner(cache.as_ref())
+}
+
+/// Builder for options and flags for removing.
+#[derive(Clone, Default)]
+pub struct DeleteOpts {
+    pub(crate) remove_fully: bool,
+}
+
+impl DeleteOpts {
+    /// Creates a blank set of cache deleting options.
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// if remove_fully is set to true, then the index file itself will be physically deleted
+    /// rather than appending a null.
+    pub fn remove_fully(mut self, remove_fully: bool) -> Self {
+        self.remove_fully = remove_fully;
+        self
+    }
 }
 
 #[cfg(test)]
